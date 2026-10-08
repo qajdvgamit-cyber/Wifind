@@ -1,0 +1,12 @@
+{
+  "name": "wifind",
+  "version": "1.0.0",
+  "private": true,
+  "description": "WiFind: find strong Wi-Fi on the T.I.P. Quezon City campus, floor by floor.",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=16"
+  }
+}
