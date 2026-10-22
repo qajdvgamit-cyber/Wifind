@@ -1,0 +1,69 @@
+plugins {
+    id 'com.android.application'
+}
+
+// The app bundles the WiFind website from the folder above this one (index.html, css, js, ...),
+// so every build matches the website in this repository. Edit the website, rebuild, and the app updates too.
+def webRoot = rootProject.projectDir.parentFile
+def webOut = layout.buildDirectory.dir('generated/wifind-web').get().asFile
+def copyWebApp = tasks.register('copyWebApp', Sync) {
+    from(webRoot) {
+        include 'index.html', 'manifest.webmanifest', 'css/**', 'js/**', 'assets/**', 'icons/**', 'speedtest/**'
+    }
+    into new File(webOut, 'www')
+}
+
+android {
+    namespace = 'com.wifind.app'
+    compileSdk = 35
+
+    defaultConfig {
+        applicationId = 'com.wifind.app'
+        minSdk = 24
+        targetSdk = 35
+        versionCode = 1
+        versionName = '1.0'
+    }
+
+    // One shared signing key, so every new build can update the app already on a phone.
+    // That's fine for a class prototype. Make your own private key before publishing on Google Play.
+    signingConfigs {
+        wifind {
+            storeFile = file('wifind-demo.p12')
+            storeType = 'pkcs12'
+            storePassword = 'wifind-demo'
+            keyAlias = 'wifind'
+            keyPassword = 'wifind-demo'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled = false
+            signingConfig = signingConfigs.wifind
+        }
+        debug {
+            signingConfig = signingConfigs.wifind
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+
+    sourceSets {
+        main {
+            assets.srcDir(webOut)
+        }
+    }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
+}
+
+tasks.matching { it.name == 'preBuild' }.configureEach {
+    dependsOn copyWebApp
+}

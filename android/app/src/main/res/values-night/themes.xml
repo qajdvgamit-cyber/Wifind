@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="WiFindTheme" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorPrimary">@color/wifind_blue</item>
+        <item name="android:colorAccent">@color/wifind_blue</item>
+        <item name="android:windowBackground">@color/wifind_surface</item>
+    </style>
+</resources>

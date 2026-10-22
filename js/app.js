@@ -157,6 +157,10 @@ const Q = {
   fr1: [-62, 34, 10, 16, 7, 0.7], fr2: [-65, 42, 14, 12, 5, 1.0],
   wk1: [-72, 62, 22, 6, 2, 2.0], wk2: [-76, 80, 28, 4, 1.5, 2.8],
 };
+// Campus access points for the Android app: access point ID (BSSID) -> spot ID, for example 'a4:2b:b0:12:34:56': 'b5-3'.
+// Fill this in from "Share list" in the Android app after your team walks the campus, so every phone knows where it is.
+const AP_MAP = {
+};
 const F = (f, q, profile, sens, type, why, tip, marks) => ({ f, q, profile, sens, type, why, tip, marks: marks || [] });
 const DEAD9 = (f) => F(f, null, 'classroom', 0.3, 'Classrooms', ['noCoverage', 'concrete', 'mobileOnly'], 'Save what you need offline before class, or use the nearest strong spot below.');
 
@@ -374,17 +378,17 @@ function liveFor(spotId, windowMs) {
   const since = Date.now() - windowMs;
   const rs = allReports().filter((r) => r.spot === spotId && r.at >= since);
   if (!rs.length) return null;
-  const ping = median(rs.map((r) => r.ping)), jitter = median(rs.map((r) => r.jitter)), down = median(rs.map((r) => r.down)), up = median(rs.map((r) => r.up));
+  const ping = median(rs.map((r) => r.ping)), jitter = median(rs.map((r) => r.jitter)), down = median(rs.map((r) => r.down)), up = median(rs.map((r) => r.up)), rssi = median(rs.map((r) => r.rssi));
   const ratings = rs.map((r) => r.rating).filter((v) => v >= 1 && v <= 5);
   const rating = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
   const noWifi = rs.filter((r) => r.issues && r.issues.indexOf('none') >= 0).length;
-  const hasM = ping != null || down != null;
-  const s1 = hasM ? scoreOf({ ping, jitter, down }) : null;
+  const hasM = ping != null || down != null || rssi != null;
+  const s1 = hasM ? scoreOf({ ping, jitter, down, rssi }) : null;
   const s2 = rating != null ? RATING_SCORE[clamp(Math.round(rating), 1, 5) - 1] : null;
   let score = s1 != null && s2 != null ? s1 * 0.7 + s2 * 0.3 : (s1 != null ? s1 : s2);
   if (noWifi && noWifi >= rs.length / 2) score = Math.min(score == null ? 8 : score, 8);
   const lastHour = rs.filter((r) => r.at >= Date.now() - 3600e3 && r.issues && r.issues.indexOf('none') >= 0).length;
-  return { count: rs.length, ping, jitter, down, up, rating, score, lastAt: Math.max.apply(null, rs.map((r) => r.at)), outage: lastHour >= 2, outageCount: lastHour };
+  return { count: rs.length, ping, jitter, down, up, rssi, rating, score, lastAt: Math.max.apply(null, rs.map((r) => r.at)), outage: lastHour >= 2, outageCount: lastHour };
 }
 
 function stateOf(sp, h) {
@@ -399,8 +403,9 @@ function stateOf(sp, h) {
         jitter: live.jitter != null ? live.jitter : m.jitter,
         down: live.down != null ? live.down : m.down,
         up: live.up != null ? live.up : m.up,
-        none: m.none && !(live.down > 0.5),
-        measured: { ping: live.ping != null, jitter: live.jitter != null, down: live.down != null, up: live.up != null },
+        rssi: live.rssi != null ? live.rssi : m.rssi,
+        none: m.none && !(live.down > 0.5) && live.rssi == null,
+        measured: { ping: live.ping != null, jitter: live.jitter != null, down: live.down != null, up: live.up != null, rssi: live.rssi != null },
       });
     }
   }
@@ -514,6 +519,8 @@ function sanitizeReport(id, d) {
     id: String(id || d.id || uid8()).slice(0, 64),
     spot: d.spot,
     ping: num(d.ping, 0, 5000), jitter: num(d.jitter, 0, 5000), down: num(d.down, 0, 5000), up: num(d.up, 0, 5000),
+    rssi: typeof d.rssi === 'number' && isFinite(d.rssi) && d.rssi < 0 && d.rssi > -127 ? Math.round(d.rssi) : null,
+    band: typeof d.band === 'string' ? d.band.slice(0, 8) : null,
     rating: d.rating >= 1 && d.rating <= 5 ? Math.round(d.rating) : null,
     issues: Array.isArray(d.issues) ? d.issues.filter((x) => ISSUE_NAME[x]).slice(0, 5) : [],
     note: typeof d.note === 'string' ? d.note.slice(0, 120) : '',
@@ -1259,7 +1266,7 @@ function detailHTML(sp) {
     '<div class="m-desc">' + desc + (extra || '') + '</div>' +
     (w != null ? '<div class="meter" data-st="' + mst + '"><i data-w="' + w + '%" style="background:var(--q-' + mst + ')"></i></div>' : '') + '</div>';
   h += '<div class="metrics">';
-  h += tile('signal', 'Signal', m.none ? '—' : m.rssi, 'dBm', m.none ? 'No Wi-Fi signal' : describe.rssi(m.rssi), ' ' + barsHTML(m.none ? 0 : rssiBars(m.rssi), key), null);
+  h += tile('signal', 'Signal', m.none ? '—' : m.rssi, 'dBm', m.none ? 'No Wi-Fi signal' : describe.rssi(m.rssi), ' ' + barsHTML(m.none ? 0 : rssiBars(m.rssi), key), null, undefined, meas.rssi);
   h += tile('timer', 'Ping', fmtMs(m.ping), 'ms', describe.ping(m.ping), '', m.ping == null ? 0 : Math.round(clamp(100 - m.ping / 2, 4, 100)), metricSt.ping(m.ping), meas.ping);
   h += tile('download', 'Download', m.none && !(m.down > 0.5) ? '—' : fmtMbps(m.down), 'Mbps', describe.down(m.down), '', Math.round(clamp((m.down || 0) / 50 * 100, 2, 100)), metricSt.down(m.down), meas.down);
   h += tile('upload', 'Upload', m.none ? '—' : fmtMbps(m.up), 'Mbps', m.none ? 'No connection' : describe.down(m.up), '', Math.round(clamp((m.up || 0) / 25 * 100, 2, 100)), metricSt.down((m.up || 0) * 2), meas.up);
@@ -1301,6 +1308,7 @@ function repRowHTML(r) {
   if (r.ping != null) bits.push(fmtMs(r.ping) + ' ms');
   if (r.down != null) bits.push(fmtMbps(r.down) + ' Mbps');
   if (r.up != null) bits.push(fmtMbps(r.up) + ' up');
+  if (r.rssi != null) bits.push(String(r.rssi).replace('-', '−') + ' dBm');
   if (r.rating) bits.push(['No signal', 'Weak', 'Fair', 'Good', 'Excellent'][r.rating - 1]);
   if (r.issues.length) bits.push(ISSUE_NAME[r.issues[0]]);
   const mine = (state.uid && r.by === state.uid) || r.local;
@@ -1797,7 +1805,9 @@ async function runTest() {
     }
   }
   test.running = false; test.at = Date.now();
-  state.tests.push({ at: test.at, ping: test.ping, jitter: test.jitter, down: test.down, up: test.up, spot: $('#repSpot').value || null });
+  const sigNow = phoneSignal();
+  test.rssi = sigNow ? sigNow.rssi : null;
+  state.tests.push({ at: test.at, ping: test.ping, jitter: test.jitter, down: test.down, up: test.up, rssi: test.rssi, spot: $('#repSpot').value || null });
   state.tests = state.tests.slice(-20);
   store.set('tests', state.tests);
   $('#attachTest').checked = true;
@@ -1846,13 +1856,16 @@ async function sendReport() {
   const spot = $('#repSpot').value;
   if (!spot) { toast({ ico: 'pin', title: 'Choose where you are first', body: 'Pick the spot you are reporting from the list.', st: 'fair', ms: 3500 }); $('#repSpot').focus(); return; }
   const attach = test.at && $('#attachTest').checked;
-  if (!rating && !attach && !issuesSel.size) { toast({ ico: 'info', title: 'Add a rating or a test result', body: 'Tap how the Wi-Fi feels, or run a speed test first.', st: 'fair', ms: 3500 }); return; }
+  const sigNow = phoneSignal();
+  if (!rating && !attach && !issuesSel.size && !sigNow) { toast({ ico: 'info', title: 'Add a rating or a test result', body: 'Tap how the Wi-Fi feels, or run a speed test first.', st: 'fair', ms: 3500 }); return; }
   const r = {
     spot, at: Date.now(),
     ping: attach && test.ping != null ? Math.round(test.ping * 10) / 10 : null,
     jitter: attach && test.jitter != null ? Math.round(test.jitter * 10) / 10 : null,
     down: attach && test.down != null ? Math.round(test.down * 100) / 100 : null,
     up: attach && test.up != null ? Math.round(test.up * 100) / 100 : null,
+    rssi: sigNow ? sigNow.rssi : null,
+    band: sigNow ? sigNow.band : null,
     rating: rating || (issuesSel.has('none') ? 1 : null),
     issues: Array.from(issuesSel),
     note: ($('#repNote').value || '').trim().slice(0, 120),
@@ -1927,7 +1940,7 @@ function renderMyTests() {
   if (t.length > 1) s += '<path class="sp-area" d="M' + xs(0).toFixed(1) + ' ' + (Hd - 12) + 'L' + pts.join('L') + 'L' + xs(t.length - 1).toFixed(1) + ' ' + (Hd - 12) + 'Z"/><path class="sp-line" d="M' + pts.join('L') + '"/>';
   vals.forEach((v, i) => { s += '<circle class="sp-dot" cx="' + xs(i).toFixed(1) + '" cy="' + ys(v).toFixed(1) + '" r="' + (i === vals.length - 1 ? 5 : 3.5) + '"/>'; });
   s += '</svg>';
-  const last = t.slice().reverse().slice(0, 4).map((x) => '<li class="rep"><span>' + barsHTML(statusOf(scoreOf({ ping: x.ping, jitter: x.jitter, down: x.down })).bars, statusOf(scoreOf({ ping: x.ping, jitter: x.jitter, down: x.down })).key) + '</span><span style="min-width:0"><span class="who">' + (x.spot && SPOT[x.spot] ? esc(SPOT[x.spot].short) : 'Unlabeled spot') + '</span><span class="what" style="display:block">' + fmtMs(x.ping) + ' ms · ' + fmtMbps(x.down) + ' Mbps</span></span><span class="when">' + ago(x.at) + '</span></li>').join('');
+  const last = t.slice().reverse().slice(0, 4).map((x) => '<li class="rep"><span>' + barsHTML(statusOf(scoreOf({ ping: x.ping, jitter: x.jitter, down: x.down })).bars, statusOf(scoreOf({ ping: x.ping, jitter: x.jitter, down: x.down })).key) + '</span><span style="min-width:0"><span class="who">' + (x.spot && SPOT[x.spot] ? esc(SPOT[x.spot].short) : 'Unlabeled spot') + '</span><span class="what" style="display:block">' + fmtMs(x.ping) + ' ms · ' + fmtMbps(x.down) + ' Mbps' + (typeof x.rssi === 'number' ? ' · ' + String(x.rssi).replace('-', '−') + ' dBm' : '') + '</span></span><span class="when">' + ago(x.at) + '</span></li>').join('');
   box.innerHTML = '<div class="eyebrow">Download speed, last ' + t.length + ' test' + (t.length === 1 ? '' : 's') + '</div>' + s + '<ul class="reports-mini">' + last + '</ul>';
 }
 let lastOutages = new Set();
@@ -2416,6 +2429,322 @@ async function initDb() {
 
 
 /* =========================================================
+   Android app: the phone's real Wi-Fi signal.
+   window.WiFindNative only exists inside the WiFind Android app,
+   so none of this shows on the website.
+   ========================================================= */
+const NATIVE = (() => { const n = window.WiFindNative; return n && typeof n.getWifiInfo === 'function' ? n : null; })();
+const sig = { mode: null, info: null, scan: [], scanAt: 0, hist: [], here: null, hereFrom: null, cand: null, candN: 0, poll: 0, scanTimer: 0, toldScanLimit: 0 };
+const ST_BY_BARS = ['dead', 'weak', 'fair', 'good', 'excellent'];
+const normB = (b) => (typeof b === 'string' && /^[0-9a-f]{2}(:[0-9a-f]{2}){5}$/i.test(b) && b !== '02:00:00:00:00:00' ? b.toLowerCase() : null);
+const AP_BUILTIN = {};
+for (const k of Object.keys(AP_MAP)) { const b = normB(k); if (b && SPOT[AP_MAP[k]]) AP_BUILTIN[b] = AP_MAP[k]; }
+function loadMyAps() {
+  const m = store.get('apMap', {});
+  const out = {};
+  if (m && typeof m === 'object' && !Array.isArray(m)) for (const k of Object.keys(m)) { const b = normB(k), v = m[k]; if (b && v && SPOT[v.spot]) out[b] = { spot: v.spot, rssi: typeof v.rssi === 'number' ? v.rssi : -90, at: +v.at || 0 }; }
+  return out;
+}
+let myAps = loadMyAps();
+function apSpot(b) {
+  b = normB(b);
+  if (!b) return null;
+  return myAps[b] ? myAps[b].spot : AP_BUILTIN[b] || null;
+}
+function nativeJSON(fn, arg) {
+  if (!NATIVE || typeof NATIVE[fn] !== 'function') return null;
+  try {
+    const out = arg === undefined ? NATIVE[fn]() : NATIVE[fn](arg);
+    return typeof out === 'string' && out ? JSON.parse(out) : out;
+  } catch (e) { return null; }
+}
+// The phone's current reading, or null (also null on the website)
+function phoneSignal() {
+  const i = sig.info;
+  return i && i.connected && typeof i.rssi === 'number' && i.rssi < 0 && i.rssi > -127 ? { rssi: Math.round(i.rssi), band: i.band || null, bssid: normB(i.bssid) } : null;
+}
+function sigMode(i) {
+  if (!i || !i.ok) return 'error';
+  if (!i.wifiEnabled) return 'wifiOff';
+  if (!i.connected) return 'disconnected';
+  return 'ok';
+}
+
+function sigHeadHTML(title, sub, live) {
+  return '<div class="sg-head"><div><div class="eyebrow">Your ' + WIFI + ' signal</div><h2>' + title + '</h2>' + (sub ? '<p class="muted">' + sub + '</p>' : '') + '</div>' +
+    (live ? '<span class="tag tag-live">Live</span>' : '') + '</div>';
+}
+function nearbyHTML() {
+  return '<div class="section-title"><h3>Nearby access points</h3><button class="btn btn-sm" type="button" data-sg="scan">' + icon('refresh') + 'Scan</button></div><ul class="sg-near" id="sgNearby"></ul>';
+}
+function renderSignalCard() {
+  const card = $('#signalCard');
+  const m = sig.mode;
+  if (m === 'error') {
+    card.innerHTML = sigHeadHTML('Couldn’t read this phone’s ' + WIFI, 'Close WiFind and open it again. If it keeps happening, restart ' + WIFI + '.');
+  } else if (m === 'wifiOff' || m === 'disconnected') {
+    card.innerHTML = sigHeadHTML(m === 'wifiOff' ? WIFI + ' is off' : 'Not connected to ' + WIFI,
+      'Connect to the campus ' + WIFI + ' to see your signal strength and which access point you’re on.') +
+      '<div class="sg-actions"><button class="btn btn-primary" type="button" data-sg="wifi">' + icon('wifi') + 'Open ' + WIFI + ' settings</button></div>' +
+      '<div class="sg-note" id="sgPerm" hidden></div>' + nearbyHTML();
+  } else {
+    card.innerHTML = sigHeadHTML('Live from this phone', '', true) +
+      '<div class="sg-grid"><div class="sg-col">' +
+        '<div class="sg-read" id="sgRead"><span id="sgBars"></span><span class="sg-num"><b id="sgVal">—</b><small>dBm</small></span><span class="sg-lbl" id="sgLbl"></span></div>' +
+        '<svg class="sg-spark" id="sgSpark" viewBox="0 0 300 56" preserveAspectRatio="none" aria-hidden="true"></svg>' +
+        '<div class="sg-scale"><span>Last 90 seconds</span><span>−30 dBm is best · −90 dBm is unusable</span></div>' +
+        '<div class="sg-note" id="sgPerm" hidden></div>' +
+        '<div class="sg-facts" id="sgFacts"></div>' +
+      '</div><div class="sg-col">' +
+        '<div id="sgHere"></div>' +
+        '<div class="sg-tag"><label class="field-label" for="sgSpot">This access point is in</label>' +
+          '<div class="sg-tagrow"><select class="select" id="sgSpot"></select><button class="btn btn-primary" type="button" data-sg="save">' + icon('pin') + 'Save</button></div>' +
+          '<div class="sg-mapped" id="sgMapped"></div></div>' +
+      '</div></div>' + nearbyHTML();
+    const sel = $('#sgSpot');
+    sel.innerHTML = spotOptionsHTML();
+    sel.value = sig.here || $('#repSpot').value || '';
+  }
+  updateLive();
+  renderNearby();
+}
+function updateLive() {
+  const i = sig.info;
+  if (!i) return;
+  const ps = phoneSignal();
+  if ($('#sgVal')) {
+    const bars = ps ? rssiBars(ps.rssi) : 0;
+    const st = ST_BY_BARS[bars];
+    $('#sgRead').dataset.st = st;
+    $('#sgBars').innerHTML = barsHTML(bars, st);
+    $('#sgVal').textContent = ps ? String(ps.rssi).replace('-', '−') : '—';
+    $('#sgLbl').textContent = ps ? describe.rssi(ps.rssi) : 'Reading…';
+    drawSpark(st);
+    const fact = (lbl, val, mono) => '<div class="sg-fact"><small>' + lbl + '</small><b' + (mono ? ' class="mono"' : '') + '>' + esc(val) + '</b></div>';
+    const b = normB(i.bssid);
+    $('#sgFacts').innerHTML =
+      fact('Network', i.ssid || 'Hidden') +
+      fact('Band', (i.band || '—') + (i.channel ? ' · ch ' + i.channel : '')) +
+      fact('Link speed', i.linkSpeed > 0 ? i.linkSpeed + ' Mbps' : '—') +
+      fact('Access point', b || 'Hidden', !!b) +
+      (i.standard ? fact('Standard', i.standard) : '');
+    updateHere();
+  }
+  const pn = $('#sgPerm');
+  if (pn) {
+    let h = '';
+    if (i.permission !== 'granted') {
+      const blocked = i.permission === 'blocked';
+      h = icon('pin') + '<span>' + (blocked
+        ? 'Location access is off for WiFind, so Android hides the network name and access point. Turn on <b>Location → Allow</b> in WiFind’s settings.'
+        : 'Allow location so Android shares the network name and which access point you’re on. WiFind only uses it to match the access point to a building and floor.') + '</span>' +
+        '<button class="btn btn-sm btn-soft" type="button" data-sg="' + (blocked ? 'app' : 'perm') + '">' + (blocked ? 'Open settings' : 'Allow') + '</button>';
+    } else if (!i.locationEnabled) {
+      h = icon('pin') + '<span>Turn on Location on this phone. Android hides ' + WIFI + ' details while Location is off.</span><button class="btn btn-sm btn-soft" type="button" data-sg="location">Turn on</button>';
+    }
+    pn.hidden = !h;
+    if (pn.innerHTML !== h) pn.innerHTML = h;
+  }
+}
+function drawSpark(st) {
+  const svg = $('#sgSpark');
+  if (!svg) return;
+  svg.dataset.st = st;
+  const v = sig.hist;
+  if (v.length < 2) { svg.innerHTML = ''; return; }
+  const W = 300, H = 56, n = 45;
+  const x = (k) => W - (v.length - 1 - k) * (W / (n - 1));
+  const y = (r) => 4 + (H - 8) * (1 - clamp((r + 95) / 65, 0, 1));
+  const pts = v.map((r, k) => x(k).toFixed(1) + ',' + y(r).toFixed(1));
+  svg.innerHTML = '<line class="sg-mid" x1="0" x2="' + W + '" y1="' + y(-67).toFixed(1) + '" y2="' + y(-67).toFixed(1) + '"/>' +
+    '<path class="sg-area" d="M' + x(0).toFixed(1) + ' ' + H + 'L' + pts.join('L') + 'L' + W + ' ' + H + 'Z"/>' +
+    '<path class="sg-line" d="M' + pts.join('L') + '"/>' +
+    '<circle class="sg-dot" cx="' + x(v.length - 1).toFixed(1) + '" cy="' + y(v[v.length - 1]).toFixed(1) + '" r="3.5"/>';
+}
+function updateHere() {
+  const el = $('#sgHere');
+  if (!el) return;
+  const i = sig.info || {};
+  const b = normB(i.bssid);
+  let h;
+  if (sig.here) {
+    const sp = SPOT[sig.here], st = S(sig.here).status;
+    h = '<div class="sg-loc" data-st="' + st.key + '">' + icon('pin') + '<div><b>You’re at ' + esc(sp.name) + '</b><small>Matched by the access point you’re ' + (sig.hereFrom === 'connected' ? 'connected to' : 'closest to') + '</small></div>' +
+      '<button class="btn btn-sm" type="button" data-sg="show">Map</button></div>';
+  } else if (b) {
+    h = '<div class="sg-loc unknown">' + icon('info') + '<div><b>This access point isn’t on the map yet</b><small>Pick where you are below and tap Save. Next time, WiFind will know where you are.</small></div></div>';
+  } else {
+    h = '<div class="sg-loc unknown">' + icon('info') + '<div><b>Where are you?</b><small>WiFind can find your building and floor from the access point once location is allowed.</small></div></div>';
+  }
+  if (el.innerHTML !== h) el.innerHTML = h;
+  const nMine = Object.keys(myAps).length, nBuilt = Object.keys(AP_BUILTIN).length;
+  const mh = '<span>' + nMine + ' access point' + (nMine === 1 ? '' : 's') + ' saved on this phone' + (nBuilt ? ' · ' + nBuilt + ' built in' : '') + '</span>' +
+    (nMine ? '<span class="sg-links"><button class="linkbtn" type="button" data-sg="share">Share list</button><button class="linkbtn" type="button" data-sg="clear">Clear</button></span>' : '');
+  const mp = $('#sgMapped');
+  if (mp.innerHTML !== mh) mp.innerHTML = mh;
+}
+function renderNearby() {
+  const ul = $('#sgNearby');
+  if (!ul) return;
+  const i = sig.info || {};
+  let h;
+  if (i.permission !== 'granted') h = '<li class="empty">' + icon('info') + '<span>Allow location to see the access points around you.</span></li>';
+  else if (!i.locationEnabled) h = '<li class="empty">' + icon('info') + '<span>Turn on Location to scan for access points.</span></li>';
+  else if (!sig.scan.length) h = '<li class="empty">' + icon('refresh') + '<span>' + (sig.scanAt ? 'No access points found yet. Tap Scan to try again.' : 'Scanning…') + '</span></li>';
+  else {
+    const cur = normB(i.bssid);
+    h = sig.scan.slice(0, 8).map((r) => {
+      const b = normB(r.bssid), bars = rssiBars(r.rssi), st = ST_BY_BARS[bars], sp = apSpot(b);
+      const right = b && b === cur ? 'Connected' : sp ? SPOT[sp].short : 'dBm';
+      return '<li class="sg-ap' + (b && b === cur ? ' cur' : '') + '"><span>' + barsHTML(bars, st) + '</span><span class="sg-ap-name"><b>' + esc(r.ssid || 'Hidden network') + '</b><small>' + esc([b, r.band, r.channel ? 'ch ' + r.channel : ''].filter(Boolean).join(' · ')) + '</small></span>' +
+        '<span class="sg-ap-right"><b>' + String(r.rssi).replace('-', '−') + '</b><small>' + esc(right) + '</small></span></li>';
+    }).join('') + (sig.scan.length > 8 ? '<li class="sg-more">and ' + (sig.scan.length - 8) + ' more</li>' : '');
+  }
+  if (ul.innerHTML !== h) ul.innerHTML = h;
+}
+
+// Where am I? The connected access point wins; otherwise the strongest known one nearby.
+function locate() {
+  const i = sig.info || {};
+  let spot = null, from = null;
+  const b = normB(i.bssid);
+  if (i.connected && b && apSpot(b)) { spot = apSpot(b); from = 'connected'; }
+  else if (Date.now() - sig.scanAt < 120e3) {
+    for (const r of sig.scan) { const s = apSpot(r.bssid); if (s && r.rssi >= -75) { spot = s; from = 'nearby'; break; } }
+  }
+  if (spot === sig.here) { sig.hereFrom = from; sig.cand = null; sig.candN = 0; return; }
+  // wait for two readings in a row before moving, so a flickering access point doesn't bounce you around
+  if (spot !== sig.cand) { sig.cand = spot; sig.candN = 1; return; }
+  if (++sig.candN < 2) return;
+  sig.here = spot; sig.hereFrom = from; sig.cand = null; sig.candN = 0;
+  if (spot) onLocated(spot);
+}
+function onLocated(spot) {
+  const sp = SPOT[spot];
+  $('#repSpot').value = spot; store.set('lastSpot', spot);
+  const sel = $('#sgSpot');
+  if (sel && document.activeElement !== sel) sel.value = spot;
+  if (ORIGIN[sp.pid] && state.origin !== sp.pid) setOrigin(sp.pid);
+  toast({ ico: 'pin', st: S(spot).status.key, title: 'You’re at ' + sp.name, body: 'Found from the ' + WIFI + ' access point. Walking times and reports now start here.', ms: 4200,
+    action: { label: 'See on map', fn: () => { showView('map'); selectSpot(spot, { focus: true }); } } });
+}
+
+function saveHere() {
+  const spot = $('#sgSpot').value;
+  if (!SPOT[spot]) { toast({ ico: 'pin', title: 'Choose where you are first', body: 'Pick the building and floor this access point is in.', st: 'fair', ms: 3500 }); $('#sgSpot').focus(); return; }
+  const i = sig.info || {};
+  const cur = normB(i.bssid);
+  if (!i.connected || !cur) {
+    toast({ ico: 'wifi', title: 'Can’t see the access point', body: i.permission !== 'granted' ? 'Allow location first, so Android shares which access point you’re on.' : 'Connect to the campus ' + WIFI + ' first.', st: 'fair', ms: 4000 });
+    return;
+  }
+  const saved = store.get('apMap', {});
+  const mine = saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {};
+  const now = Date.now();
+  let n = 0;
+  const put = (b, rssi) => {
+    const old = mine[b];
+    if (old && old.spot !== spot && typeof old.rssi === 'number' && old.rssi > rssi + 3) return; // keep the stronger reading
+    mine[b] = { spot, rssi, at: now }; n++;
+  };
+  put(cur, typeof i.rssi === 'number' ? Math.round(i.rssi) : -70);
+  // strong access points of the same network around you belong to this spot too
+  if (i.ssid && Date.now() - sig.scanAt < 120e3) sig.scan.forEach((r) => { const b = normB(r.bssid); if (b && b !== cur && r.ssid === i.ssid && r.rssi >= -67) put(b, r.rssi); });
+  store.set('apMap', mine);
+  myAps = loadMyAps();
+  sig.here = spot; sig.hereFrom = 'connected'; sig.cand = null; sig.candN = 0;
+  $('#repSpot').value = spot; store.set('lastSpot', spot);
+  updateHere(); renderNearby();
+  toast({ ico: 'check', st: 'excellent', title: 'Saved ' + n + ' access point' + (n === 1 ? '' : 's'), body: 'WiFind now knows they’re at ' + SPOT[spot].name + '. Use “Share list” to send them to your team.', ms: 4200 });
+}
+function shareAps() {
+  const all = Object.assign({}, AP_BUILTIN);
+  for (const b of Object.keys(myAps)) all[b] = myAps[b].spot;
+  const keys = Object.keys(all).sort((a, b) => (all[a] + a).localeCompare(all[b] + b));
+  const text = 'WiFind access points (' + keys.length + ')\nPaste these lines inside AP_MAP near the top of js/app.js:\n\n' +
+    keys.map((b) => "  '" + b + "': '" + all[b] + "', // " + SPOT[all[b]].name).join('\n') + '\n';
+  if (NATIVE && typeof NATIVE.share === 'function') { try { NATIVE.share(text); return; } catch (e) { /* fall through */ } }
+  if (navigator.clipboard) navigator.clipboard.writeText(text).then(() => toast({ ico: 'check', st: 'excellent', title: 'Copied the list', ms: 2500 }), () => {});
+}
+function clearAps() {
+  toast({ ico: 'trash', st: 'weak', title: 'Clear saved access points?', body: 'This removes the ' + Object.keys(myAps).length + ' access points saved on this phone. Share the list first if your team needs it.', ms: 6000,
+    action: { label: 'Clear them', fn: () => { store.set('apMap', {}); myAps = {}; sig.here = null; updateHere(); renderNearby(); } } });
+}
+
+function readScan() {
+  const d = nativeJSON('getScanResults');
+  if (!d || !Array.isArray(d.results)) return;
+  sig.scan = d.results.filter((r) => r && typeof r.rssi === 'number' && normB(r.bssid)).sort((a, b) => b.rssi - a.rssi);
+  sig.scanAt = Date.now();
+  locate();
+  renderNearby(); updateHere();
+}
+function doScan(byUser) {
+  if (!NATIVE) return;
+  const ok = nativeJSON('startScan');
+  if (byUser && ok === false && Date.now() - sig.toldScanLimit > 60e3) {
+    sig.toldScanLimit = Date.now();
+    toast({ ico: 'clock', title: 'Android limits ' + WIFI + ' scans', body: 'Phones allow about 4 scans every 2 minutes, so these are the latest results.', st: 'fair', ms: 4000 });
+  }
+  readScan();
+  setTimeout(readScan, 4000); // in case the phone doesn’t announce new results
+}
+function pollSignal() {
+  sig.info = nativeJSON('getWifiInfo') || { ok: false };
+  const ps = phoneSignal();
+  if (ps) { sig.hist.push(ps.rssi); if (sig.hist.length > 45) sig.hist.shift(); }
+  else sig.hist = [];
+  const mode = sigMode(sig.info);
+  if (mode !== sig.mode) { sig.mode = mode; renderSignalCard(); }
+  else { updateLive(); renderNearby(); }
+  locate();
+  const note = $('#sgAttach');
+  if (note) {
+    note.hidden = !ps;
+    if (ps) note.innerHTML = icon('signal') + '<span>Your phone’s signal (' + String(ps.rssi).replace('-', '−') + ' dBm' + (ps.band ? ', ' + esc(ps.band) : '') + ') is added to the report automatically.</span>';
+  }
+}
+function startSignal() {
+  if (sig.poll || !NATIVE) return;
+  pollSignal();
+  doScan(false);
+  sig.poll = setInterval(pollSignal, 2000);
+  sig.scanTimer = setInterval(() => doScan(false), 40000);
+}
+function stopSignal() { clearInterval(sig.poll); clearInterval(sig.scanTimer); sig.poll = sig.scanTimer = 0; }
+function onSigClick(e) {
+  const btn = e.target.closest('[data-sg]');
+  if (!btn) return;
+  const a = btn.dataset.sg;
+  if (a === 'perm') NATIVE.requestPermission();
+  else if (a === 'app' || a === 'location' || a === 'wifi') NATIVE.openSettings(a);
+  else if (a === 'scan') doScan(true);
+  else if (a === 'save') saveHere();
+  else if (a === 'share') shareAps();
+  else if (a === 'clear') clearAps();
+  else if (a === 'show' && sig.here) { showView('map'); selectSpot(sig.here, { focus: true }); }
+}
+function initSignal() {
+  if (!NATIVE) return;
+  document.documentElement.classList.add('in-app');
+  const card = $('#signalCard');
+  card.hidden = false;
+  card.addEventListener('click', onSigClick);
+  window.__wifindNative = (type) => {
+    if (type === 'scan') readScan();
+    else if (type === 'permission') { pollSignal(); doScan(false); }
+    else if (type === 'resume') { pollSignal(); readScan(); }
+  };
+  document.addEventListener('visibilitychange', () => (document.hidden ? stopSignal() : startSignal()));
+  startSignal();
+  if (!store.get('sawSignalTip', false)) {
+    store.set('sawSignalTip', true);
+    setTimeout(() => toast({ ico: 'signal', st: 'good', title: 'See your real ' + WIFI + ' signal', body: 'The Test tab shows your phone’s signal strength and which access point you’re on.', ms: 6500,
+      action: { label: 'Show me', fn: () => showView('test') } }), 9000);
+  }
+}
+
+/* =========================================================
    Init
    ========================================================= */
 function renderFloorPick() {
@@ -2496,6 +2825,7 @@ function init() {
   $('#sendReport').addEventListener('click', sendReport);
   renderRepFeed();
   renderMyTests();
+  initSignal();
   // alerts
   $('#markRead').innerHTML = icon('check') + 'Mark all read';
   $('#markRead').addEventListener('click', markAllRead);

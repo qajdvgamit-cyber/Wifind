@@ -19,6 +19,8 @@ TECH 101 prototype by Jasper Basay, Axel James Gamit, Yuan James Antrajenda, Jev
 | `manifest.webmanifest`, `sw.js` | Make WiFind installable as a phone app and usable offline |
 | `speedtest/` | Two small files the speed test can download. Don't delete them. |
 | `package.json`, `server.js` | Let you run WiFind with `npm install` and `npm start` |
+| `android/` | The WiFind Android app, which reads your phone's real Wi-Fi signal |
+| `.github/workflows/android.yml` | Tells GitHub to build the Android app for you |
 
 Keep the folders together. The app needs all of them.
 
@@ -66,6 +68,55 @@ Open your Render link on the phone:
 - **iPhone (Safari):** **Share → Add to Home Screen**.
 
 WiFind then opens full screen from the home screen like a normal app, and it still opens without internet after the first visit.
+
+## The Android app: your phone's real Wi-Fi signal
+
+Websites aren't allowed to read Wi-Fi signal strength, so the WiFind Android app adds it. The app opens the same WiFind, and the **Test** tab gets a live card with:
+
+- your signal strength in dBm, updated every 2 seconds, with a graph of the last 90 seconds,
+- the network name, band (2.4, 5 or 6 GHz), channel, link speed and Wi-Fi standard,
+- the access point you're connected to (its ID, called a BSSID) and every access point nearby,
+- your building and floor, worked out from the access point, once your team has mapped it (see below).
+
+Reports and speed tests sent from the app include the phone's signal, so the map shows a measured signal ("Tested") instead of a sample one.
+
+iPhones can't do this: Apple doesn't let apps read Wi-Fi signal strength. On iPhones and laptops, keep using the website.
+
+### Get the app (GitHub builds it for you)
+
+You don't need Android Studio. GitHub builds the app every time you upload changes.
+
+1. Upload everything in this folder to your GitHub repository, including the `android` and `.github` folders. On a Mac, folders starting with a dot are hidden, so if `.github` doesn't upload, create the file on GitHub instead: **Add file → Create new file**, type `.github/workflows/android.yml` as the name, and paste in the contents of that file from this folder.
+2. Open the **Actions** tab of your repository. Wait for **Build Android app** to finish with a green check. It takes about 4 minutes.
+3. On your repository's main page, open **Releases** on the right, then **WiFind for Android**, and download `WiFind.apk`. The download link never changes:
+   `https://github.com/your-username/your-repo/releases/latest/download/WiFind.apk`
+   If your repository is private, only people with access to it can download the app. Make the repository public to share the app with classmates.
+4. On the Android phone, open `WiFind.apk`. Allow your browser or Files app to install apps when Android asks. Google Play Protect may warn that the app is from an unknown developer, because it isn't from the Play Store. Choose **Install anyway**.
+5. Open WiFind, go to the **Test** tab and tap **Allow**.
+
+When you upload changes later, GitHub builds a new `WiFind.apk`. Install it over the old one; your saved reports stay.
+
+**Or build it in Android Studio:** open the `android` folder with **File → Open**, wait for the first sync to finish (it downloads what it needs), plug in your phone with USB debugging on, and press **Run ▶**. To make an APK file instead, use **Build → Build App Bundle(s) / APK(s) → Build APK(s)**.
+
+### Map the campus access points
+
+The app recognizes your building and floor from the access point your phone is using. It needs a list of which access point is where, and your team builds it once:
+
+1. Go to a floor, connect to the campus Wi-Fi, and open the **Test** tab in the app.
+2. Under **This access point is in**, choose the building and floor, then tap **Save**. WiFind saves the access point you're connected to, plus strong access points of the same network around you.
+3. Repeat on every floor. A big floor may have several access points, so save from both ends of the hallway.
+4. When you're done, tap **Share list** and send it to yourself. Paste the lines inside `AP_MAP` near the top of `js/app.js`, then upload that file to GitHub. After GitHub builds the new app, every phone recognizes those floors.
+
+### Why the app asks for location
+
+Android only shares the network name and access point ID with apps that have location permission, because access point IDs can reveal where someone is. WiFind only uses them to match the access point to a building and floor. It doesn't use GPS and doesn't send your location anywhere.
+
+### Limits
+
+- Android allows about 4 Wi-Fi scans every 2 minutes, so the nearby list refreshes slowly.
+- Signal strength isn't speed. A strong signal on a crowded access point can still be slow, so run the speed test too.
+- Reports are still saved only on the phone that sent them, until you connect a shared database (see "Reports in this version").
+- The app's signing key (`android/app/wifind-demo.p12`) is shared so that every build can update the app on a phone. That's fine for a class prototype. Create your own private key before publishing on Google Play.
 
 ## Open it on your computer
 

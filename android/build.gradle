@@ -1,0 +1,4 @@
+// WiFind Android app. Open this "android" folder in Android Studio, or let GitHub build it (see README.md).
+plugins {
+    id 'com.android.application' version '8.10.1' apply false
+}
