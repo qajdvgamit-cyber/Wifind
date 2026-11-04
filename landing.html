@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WiFind: Find Better Wi‑Fi. Study Better.</title>
+<meta name="description" content="WiFind shows T.I.P. Quezon City students where the campus Wi-Fi is strong, floor by floor. Free on phone and laptop.">
+<meta property="og:title" content="WiFind: Find Better Wi-Fi. Study Better.">
+<meta property="og:description" content="See Wi-Fi strength on every floor of every T.I.P. QC building, and find the best spot for your exam, class or upload.">
+<meta property="og:image" content="landing/shot-map.webp">
+<link rel="icon" type="image/png" href="icons/favicon-32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Fredoka:wght@500;600;700&display=swap">
+<style>
+  :root {
+    --bg: #F4F8FD; --surface: #FFFFFF; --ink: #0A2149; --ink-2: #435676; --ink-3: #6E809C;
+    --line: #D9E2EF; --blue: #0B6FE3; --blue-strong: #0757B6; --blue-soft: #E1EDFE;
+    --navy: #0A3068; --green: #0E9F57; --green-soft: #DBF3E5; --red: #DB2E47; --red-soft: #FCDCE1;
+    --shadow: 0 1px 2px rgba(10,33,73,.06), 0 14px 34px rgba(10,33,73,.10);
+    --f-display: "Fredoka", "Nunito", ui-rounded, "Segoe UI", system-ui, sans-serif;
+    --f-body: "Figtree", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #06111F; --surface: #0C1A2F; --ink: #EAF1FB; --ink-2: #AFC0D8; --ink-3: #8296B3; --line: #1C3050;
+      --blue: #4C9BFF; --blue-strong: #7DB6FF; --blue-soft: #10294A; --navy: #0C1A2F; --green: #3CC97F; --green-soft: #0F3324; --red: #FF6B7F; --red-soft: #3A1520;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 14px 34px rgba(0,0,0,.35); }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 400 17px/1.6 var(--f-body); }
+  img { max-width: 100%; display: block; }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  h1, h2, h3 { font-family: var(--f-display); line-height: 1.12; margin: 0; letter-spacing: -.01em; }
+  h2 { font-size: clamp(28px, 4vw, 40px); }
+  .eyebrow { font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: var(--blue); margin-bottom: 10px; }
+  .lead { color: var(--ink-2); font-size: 19px; max-width: 640px; }
+  section { padding: 76px 0; }
+
+  /* nav */
+  .nav { position: sticky; top: 0; z-index: 10; background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+  .nav .wrap { display: flex; align-items: center; gap: 16px; height: 64px; }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font: 700 22px var(--f-display); }
+  .brand img { width: 38px; height: 38px; border-radius: 10px; background: #fff; padding: 3px; }
+  .brand span b { color: var(--blue); font-weight: 700; }
+  .nav-links { margin-left: auto; display: flex; gap: 22px; align-items: center; font-weight: 700; font-size: 15px; }
+  .nav-links a { text-decoration: none; color: var(--ink-2); }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-links a.btn-primary, .nav-links a.btn-primary:hover { color: #fff; }
+  @media (max-width: 760px) { .nav-links a.hide-sm { display: none; } }
+
+  /* buttons */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 52px; padding: 0 24px; border-radius: 26px; font: 700 16px var(--f-body); text-decoration: none; border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); transition: transform .15s, box-shadow .2s, background .2s; }
+  .btn:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+  .btn-primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .btn-primary:hover { background: var(--blue-strong); border-color: var(--blue-strong); }
+  .btn-sm { min-height: 40px; padding: 0 18px; font-size: 14px; }
+  .btn svg { width: 20px; height: 20px; }
+
+  /* hero */
+  .hero { padding: 64px 0 40px; overflow: hidden; position: relative; }
+  .hero .wrap { display: grid; gap: 44px; grid-template-columns: minmax(0, 1fr); align-items: center; }
+  @media (min-width: 940px) { .hero .wrap { grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); } }
+  .hero h1 { font-size: clamp(42px, 6.4vw, 68px); }
+  .hero h1 span { color: var(--blue); }
+  .hero .lead { margin: 18px 0 28px; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+  .fine { margin-top: 14px; font-size: 14px; color: var(--ink-3); }
+  .hero-shot { position: relative; }
+  .hero-shot .frame { border-radius: 22px; overflow: hidden; background: #0B1A30; padding: 10px; box-shadow: var(--shadow); transform: rotate(-1.2deg); }
+  .hero-shot .frame img { border-radius: 14px; }
+  .ping { position: absolute; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 16px; background: var(--surface); box-shadow: var(--shadow); font-weight: 700; font-size: 14px; animation: float 5s ease-in-out infinite; }
+  .ping i { width: 10px; height: 10px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 0 rgba(14,159,87,.5); animation: pulse 1.8s infinite; }
+  .ping.bad i { background: var(--red); animation-name: pulseRed; }
+  .ping small { display: block; font-weight: 600; color: var(--ink-3); font-size: 12px; }
+  .ping.p1 { left: -10px; bottom: 26px; }
+  .ping.p2 { right: -6px; top: -14px; animation-delay: -2.5s; }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(14,159,87,.5); } 100% { box-shadow: 0 0 0 12px rgba(14,159,87,0); } }
+  @keyframes pulseRed { 0% { box-shadow: 0 0 0 0 rgba(219,46,71,.5); } 100% { box-shadow: 0 0 0 12px rgba(219,46,71,0); } }
+  @media (prefers-reduced-motion: reduce) { .ping, .ping i { animation: none; } }
+
+  /* problem stats */
+  .stats { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 34px; }
+  .stat { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 24px; }
+  .stat b { display: block; font: 700 46px/1 var(--f-display); color: var(--red); }
+  .stat p { margin: 10px 0 0; color: var(--ink-2); font-size: 16px; }
+  .quote { margin-top: 18px; padding: 20px 24px; border-radius: 20px; background: var(--red-soft); font-size: 18px; font-style: italic; }
+  .quote small { display: block; font-style: normal; font-size: 13px; color: var(--ink-3); margin-top: 6px; }
+
+  /* steps */
+  .steps { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin-top: 34px; counter-reset: s; }
+  .step { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 26px; }
+  .step::before { counter-increment: s; content: counter(s); display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; background: var(--blue); color: #fff; font: 700 20px var(--f-display); margin-bottom: 14px; }
+  .step h3 { font-size: 22px; }
+  .step p { margin: 8px 0 0; color: var(--ink-2); }
+
+  /* features */
+  .features { display: grid; gap: 22px; margin-top: 34px; }
+  .feat { display: grid; gap: 24px; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 22px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 860px) { .feat { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); padding: 26px; } .feat:nth-child(even) .feat-img { order: 2; } }
+  .feat-img { border-radius: 16px; overflow: hidden; background: #0B1A30; padding: 8px; display: grid; place-items: center; }
+  .feat-img img { border-radius: 10px; max-height: 340px; width: auto; }
+  .feat .tag { display: inline-block; padding: 4px 10px; border-radius: 8px; background: var(--blue-soft); color: var(--blue-strong); font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
+  .feat h3 { font-size: 28px; margin-top: 10px; }
+  .feat p { color: var(--ink-2); margin: 10px 0 0; }
+  .signal-demo { display: flex; align-items: center; gap: 16px; padding: 22px; border-radius: 16px; background: #0B1A30; color: #EAF1FB; }
+  .bars { display: inline-flex; align-items: flex-end; gap: 5px; height: 44px; }
+  .bars i { width: 11px; border-radius: 3px; background: #2A3E5E; }
+  .bars i:nth-child(1) { height: 12px; } .bars i:nth-child(2) { height: 22px; } .bars i:nth-child(3) { height: 33px; } .bars i:nth-child(4) { height: 44px; }
+  .bars i.on { background: #6CBD38; }
+  .dbm { font: 700 50px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  .dbm small { font-size: 17px; color: #8296B3; margin-left: 4px; }
+
+  /* comparison */
+  .compare { margin-top: 30px; overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; }
+  table { width: 100%; border-collapse: collapse; min-width: 640px; font-size: 15px; }
+  th, td { padding: 13px 14px; text-align: center; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; font-weight: 700; }
+  thead th { font-size: 14px; color: var(--ink-2); }
+  thead th.us { color: var(--blue); font-size: 16px; }
+  td.us { background: var(--green-soft); }
+  .y { color: var(--green); font-weight: 800; } .n { color: var(--red); }
+  tbody tr:last-child td { border-bottom: 0; }
+
+  /* schools */
+  .schools { background: var(--navy); color: #EAF1FB; border-radius: 28px; padding: 44px 34px; display: grid; gap: 28px; grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 860px) { .schools { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: center; } }
+  .schools .eyebrow { color: #7DB6FF; }
+  .schools p { color: #C4D3E8; }
+  .schools ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
+  .schools li { background: rgba(255,255,255,.07); border-radius: 14px; padding: 14px 16px; }
+  .schools li b { color: #fff; }
+
+  /* team + contact */
+  .team { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); margin-top: 30px; }
+  .member { text-align: center; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 20px 12px; }
+  .member img { width: 96px; height: 96px; border-radius: 50%; margin: 0 auto 10px; border: 3px solid var(--blue-soft); }
+  .member b { display: block; font-size: 15px; }
+  .cta-final { text-align: center; padding: 70px 20px; }
+  .cta-final h2 { font-size: clamp(32px, 5vw, 50px); }
+  .cta-final .ctas { justify-content: center; margin-top: 26px; }
+  .contact { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: 24px; padding: 28px; margin-top: 36px; }
+  @media (min-width: 760px) { .contact { grid-template-columns: auto minmax(0, 1fr); } }
+  .contact img.qr { width: 150px; height: 150px; border-radius: 12px; background: #fff; padding: 8px; border: 1px solid var(--line); }
+  .contact dl { margin: 0; display: grid; gap: 10px; }
+  .contact dt { font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); }
+  .contact dd { margin: 0; font-weight: 600; }
+  footer { padding: 30px 0 46px; color: var(--ink-3); font-size: 14px; text-align: center; }
+
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s, transform .7s; }
+  .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) { .reveal { opacity: 1; transform: none; transition: none; } }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="assets/wifind-mark.webp" alt=""><span>Wi<b>Find</b></span></a>
+    <div class="nav-links">
+      <a class="hide-sm" href="#how">How it works</a>
+      <a class="hide-sm" href="#features">Features</a>
+      <a class="hide-sm" href="#contact">Contact</a>
+      <a class="btn btn-primary btn-sm" href="index.html">Open WiFind</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">For T.I.P. Quezon City students</div>
+      <h1>Find Better Wi‑Fi.<br><span>Study Better.</span></h1>
+      <p class="lead">WiFind shows the Wi‑Fi strength on every floor of every campus building, so you know where to go before your exam, class or upload, not after it fails.</p>
+      <div class="ctas">
+        <a class="btn btn-primary" href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z"/><path d="M9 4v14M15 6v14"/></svg>Open the campus map</a>
+        <a class="btn" href="https://github.com/qajdvgamit-cyber/Wifind/releases/latest/download/WiFind.apk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>Get the Android app</a>
+      </div>
+      <p class="fine">Free for students · Works on phones and laptops · No sign-up</p>
+    </div>
+    <div class="hero-shot">
+      <div class="frame"><img src="landing/shot-map.webp" alt="WiFind campus map with Wi-Fi quality markers on each building" width="932" height="680"></div>
+      <div class="ping p2"><i></i><div>Study Hall<small>Excellent · 13 ms ping</small></div></div>
+      <div class="ping bad p1"><i></i><div>Building 9 · 4F<small>Dead zone · try 2 floors down</small></div></div>
+    </div>
+  </div>
+</header>
+
+<section id="problem">
+  <div class="wrap reveal">
+    <div class="eyebrow">The problem</div>
+    <h2>Campus Wi‑Fi changes from floor to floor, and nobody can tell where it's good.</h2>
+    <div class="stats">
+      <div class="stat"><b>5 of 5</b><p>students we surveyed face slow, unstable or high-ping Wi‑Fi often or always.</p></div>
+      <div class="stat"><b>5 of 5</b><p>have had to move somewhere else because the Wi‑Fi was too weak.</p></div>
+      <div class="stat"><b>0 of 5</b><p>can say for sure which areas have reliable Wi‑Fi.</p></div>
+    </div>
+    <div class="quote">“When will Building 9 get Wi‑Fi? We can't even access Canva. How are we supposed to study for exams?”<small>A T.I.P. QC student's post, translated from Filipino</small></div>
+  </div>
+</section>
+
+<section id="how" style="padding-top:20px">
+  <div class="wrap reveal">
+    <div class="eyebrow">How it works</div>
+    <h2>Three steps to a better connection</h2>
+    <div class="steps">
+      <div class="step"><h3>Open WiFind</h3><p>Scan the QR code or go to wifind.onrender.com on your phone or laptop.</p></div>
+      <div class="step"><h3>See the map</h3><p>Every building and floor is rated from Excellent to Dead zone, hour by hour.</p></div>
+      <div class="step"><h3>Go and test</h3><p>Head to the best spot, test your speed, and report it so other students know too.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="features" style="padding-top:20px">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="eyebrow">Features</div>
+      <h2>Everything you need to stay connected on campus</h2>
+    </div>
+    <div class="features">
+      <article class="feat reveal">
+        <div class="feat-img"><img src="landing/shot-find.webp" alt="Best-spot finder ranking campus spots for an online class" loading="lazy"></div>
+        <div><span class="tag">Find</span><h3>The best spot for what you need</h3><p>Pick your task, like a video call, an online exam, Canva or submitting requirements. WiFind ranks the spots that can handle it, with the walking time from where you are.</p></div>
+      </article>
+      <article class="feat reveal">
+        <div class="feat-img"><img src="landing/shot-test.webp" alt="Speed test showing ping, jitter, download and upload" loading="lazy"></div>
+        <div><span class="tag">Test</span><h3>Check your speed in seconds</h3><p>Measure ping, jitter, download and upload, then report your spot. Your real reading replaces the estimate on the map, so it gets more accurate with every student.</p></div>
+      </article>
+      <article class="feat reveal">
+        <div class="feat-img"><img src="landing/shot-alerts.webp" alt="Alerts about dead zones and outages" loading="lazy"></div>
+        <div><span class="tag">Alerts</span><h3>Know about dead zones first</h3><p>Get warned about weak areas and outages, with a strong spot nearby suggested instead.</p></div>
+      </article>
+      <article class="feat reveal">
+        <div class="signal-demo" aria-label="Live signal example: minus 58 dBm, strong"><span class="bars"><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span><span class="dbm" id="dbm">−58<small>dBm</small></span></div>
+        <div><span class="tag">Android app</span><h3>Your phone's real signal, live</h3><p>The Android app reads your actual signal strength, the network band and the access point you're on, and it recognizes which building and floor you're in.</p></div>
+      </article>
+      <article class="feat reveal">
+        <div class="feat-img"><img src="landing/shot-lab.webp" alt="Signal Lab showing how walls and distance weaken Wi-Fi" loading="lazy"></div>
+        <div><span class="tag">Signal Lab</span><h3>Learn why Wi‑Fi gets weak</h3><p>Drag a phone around a floor plan and see how distance, walls and crowds change the signal.</p></div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="compare" style="padding-top:20px">
+  <div class="wrap reveal">
+    <div class="eyebrow">Why WiFind</div>
+    <h2>Other apps test where you are. WiFind tells you where to go.</h2>
+    <div class="compare">
+      <table>
+        <thead><tr><th>Feature</th><th>Speed test apps</th><th>Wi‑Fi map apps</th><th>Facebook posts</th><th class="us">WiFind</th></tr></thead>
+        <tbody>
+          <tr><td>Tests your connection</td><td class="y">✓</td><td class="y">✓</td><td class="n">✗</td><td class="us y">✓</td></tr>
+          <tr><td>Map of the T.I.P. QC campus</td><td class="n">✗</td><td class="n">✗</td><td class="n">✗</td><td class="us y">✓</td></tr>
+          <tr><td>Floor-by-floor detail</td><td class="n">✗</td><td class="n">✗</td><td class="n">✗</td><td class="us y">✓</td></tr>
+          <tr><td>Best spot for your task</td><td class="n">✗</td><td class="n">✗</td><td class="n">✗</td><td class="us y">✓</td></tr>
+          <tr><td>Dead-zone and outage alerts</td><td class="n">✗</td><td class="n">✗</td><td class="n">✗</td><td class="us y">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="schools" style="padding-top:20px">
+  <div class="wrap reveal">
+    <div class="schools">
+      <div>
+        <div class="eyebrow">For schools</div>
+        <h2>Free for students. Useful for your IT office.</h2>
+        <p>Every speed test and report shows where the campus network is weak, so IT knows exactly where new access points will help most.</p>
+      </div>
+      <ul>
+        <li><b>Campus subscription</b> keeps WiFind free for every student.</li>
+        <li><b>Setup for your campus:</b> your buildings, floors and access points.</li>
+        <li><b>Weak-spot reports</b> from real student tests.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="team" style="padding-top:20px">
+  <div class="wrap reveal">
+    <div class="eyebrow">The team</div>
+    <h2>Built by T.I.P. QC students who deal with this every day</h2>
+    <div class="team">
+      <div class="member"><img src="landing/jasper.webp" alt=""><b>Jasper Basay</b></div>
+      <div class="member"><img src="landing/axel.webp" alt=""><b>Axel James Gamit</b></div>
+      <div class="member"><img src="landing/yuan.webp" alt=""><b>Yuan James Antrajenda</b></div>
+      <div class="member"><img src="landing/jevin.webp" alt=""><b>Jevin Loy-a</b></div>
+      <div class="member"><img src="landing/justine.webp" alt=""><b>Justine Mariano</b></div>
+    </div>
+  </div>
+</section>
+
+<section id="contact" class="cta-final">
+  <div class="wrap reveal">
+    <h2>Stop guessing. Start studying.</h2>
+    <p class="lead" style="margin:14px auto 0">Open WiFind before your next class and go straight to a spot that works.</p>
+    <div class="ctas">
+      <a class="btn btn-primary" href="index.html">Open WiFind now</a>
+      <a class="btn" href="https://github.com/qajdvgamit-cyber/Wifind/releases/latest/download/WiFind.apk">Get the Android app</a>
+    </div>
+    <div class="contact" style="text-align:left">
+      <img class="qr" src="landing/qr.png" alt="QR code that opens wifind.onrender.com">
+      <dl>
+        <div><dt>Website</dt><dd><a href="https://wifind.onrender.com">wifind.onrender.com</a></dd></div>
+        <div><dt>Find us</dt><dd>T.I.P. Quezon City, Cubao, Quezon City</dd></div>
+        <div><dt>Questions or a demo for your school</dt><dd><a href="https://github.com/qajdvgamit-cyber/Wifind/issues">Message the WiFind team</a></dd></div>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<footer>WiFind · A TECH 101 student project at T.I.P. Quezon City · Not an official T.I.P. service</footer>
+
+<script>
+  // fade sections in as they scroll into view
+  (function () {
+    var els = document.querySelectorAll('.reveal');
+    if (!('IntersectionObserver' in window)) { els.forEach(function (e) { e.classList.add('in'); }); return; }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); } });
+    }, { threshold: 0.12 });
+    els.forEach(function (e) { io.observe(e); });
+  })();
+  // a live-looking signal reading for the Android card
+  (function () {
+    var el = document.getElementById('dbm');
+    if (!el || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+    setInterval(function () { el.firstChild.nodeValue = '−' + (56 + Math.round(Math.random() * 5)); }, 2000);
+  })();
+</script>
+</body>
+</html>
